@@ -18,9 +18,34 @@ sub readx {
 
 sub printx {
     for(@{$_[0]}) {
+        my @strings = ('','','');
         for(@$_) {
-            print $_.'!';
+            @strings = append_cell($_,@strings);
         }
-        print "\n";
+        for(@strings) {
+            $_.='#';
+        }
+        for(@strings) {
+            print $_."\n";
+        }
     }
+}
+
+sub append_cell {
+    my ($symbol,@strings) = @_;
+    my $flag;
+    my @newstr;
+    for(@strings) {
+        if(!$flag) {
+            push @newstr, $_.'###';
+        }
+        elsif($symbol =~ /X/) {
+            push @newstr, $_.'###';
+        }
+        else {
+            push @newstr, $_.'#  ';
+        }
+        $flag=1;
+    }
+    return @newstr;
 }
