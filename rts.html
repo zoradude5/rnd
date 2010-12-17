@@ -1,0 +1,193 @@
+<html>
+<head>
+<script>
+window.onload = function() {
+WIDTH = 800; HEIGHT = 500;
+FRAME_LENGTH = 20;
+FPS = 1000/20;
+SHIP_WIDTH = 10; SHIP_HEIGHT = 15;
+var c = document.getElementById('game');
+var ctx = c.getContext("2d");
+//ctx.translate(0,c.height); ctx.scale(1,-1);//scaling/translating so we're cartesian
+setInterval(draw, FRAME_LENGTH);
+ships = [{id:0, x:0,y:0, newx:100,newy:100, d:6},{id:1, x:300,y:300, newx:200,newy:100, d:6}]
+selected = {}
+var selecting = false;
+var mouse = {xi: 0, yi: 0, xf: 0, yf: 0};
+
+function draw() {
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    for(var i = 0; i < ships.length; i++) {
+        moveShip(ships[i]);
+        drawShip(ctx,ships[i]);
+    }
+    if(selecting) {
+        ctx.strokeRect(mouse.xi, mouse.yi, mouse.xf - mouse.xi, mouse.yf - mouse.yi);
+    }
+}
+function moveShip(ship) {
+    var deltax = ship.newx - ship.x;
+    var deltay = ship.newy - ship.y;
+    var hyp = Math.sqrt(deltax*deltax + deltay*deltay)
+    var c = hyp / ship.d;
+    var dy = deltay / c;
+    var dx = deltax / c;
+    if(isValidMove(ship.id, ship.x + dx, ship.y + dy, ships)) {
+        if(deltax != 0) {
+            if(Math.abs(dx) > Math.abs(deltax)) {
+                ship.x = ship.newx
+            }
+            else {
+                ship.x += dx;
+            }
+        }
+        if(deltay != 0) {
+            if(Math.abs(dy) > Math.abs(deltay)) {
+                ship.y = ship.newy
+            }
+            else {
+                ship.y += dy;
+            }
+        }
+    }
+    else {
+        ship.newx = ship.x;
+        ship.newy = ship.y;
+    }
+}
+function drawShip(ctx, ship) {
+    var x = ship.x;
+    var y = ship.y;
+    var o = 0;
+    var deltax = ship.newx - x;
+    var deltay = ship.newy - y;
+    if(deltay != 0) {
+        o = Math.atan(deltay/deltax);
+        o += Math.PI/2
+        if(deltax < 0 && deltay < 0) { // quadrant 4
+            o += Math.PI
+        }
+        else if(deltax < 0 && deltay > 0) { // quadrant 2
+            o += Math.PI
+        }
+    }
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(o);
+    ctx.beginPath();
+    ctx.moveTo(0, SHIP_HEIGHT/-2);
+    ctx.lineTo(SHIP_WIDTH/2, SHIP_HEIGHT/2);
+    ctx.lineTo(SHIP_WIDTH/-2, SHIP_HEIGHT/2);
+    ctx.closePath();
+    ctx.stroke();
+    if(ship.selected) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#00ff00';
+        ctx.moveTo(0, SHIP_HEIGHT/-2 - 1);
+        ctx.lineTo(SHIP_WIDTH/2 + 1, SHIP_HEIGHT/2 + 1);
+        ctx.lineTo(SHIP_WIDTH/-2 - 1, SHIP_HEIGHT/2 + 1);
+        ctx.closePath();
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+c.oncontextmenu = function(e) {
+    var x = e.offsetX;
+    var y = e.offsetY;
+    for(var i = 0; i < ships.length; i++) {
+        if(ships[i].selected) {
+            ships[i].newx = x;
+            ships[i].newy = y;
+        }
+    }
+    return false;
+}
+c.onmousedown = function(e) {
+    if (e.button == 0) { // left click
+        mouse.xi = e.offsetX;
+        mouse.yi = e.offsetY;
+        mouse.xf = e.offsetX;
+        mouse.yf = e.offsetY;
+        select(mouse, ships);
+        selecting = true;
+    }
+    else if(e.button == 2){ // right click
+    }
+}
+c.onmousemove = function(e) {
+    if (e.button == 0) { // left click
+        if(selecting) {
+            mouse.xf = e.offsetX;
+            mouse.yf = e.offsetY;
+            select(mouse, ships);
+        }
+    }
+    else if(e.button == 2){ // right click
+    }
+}
+c.onmouseup = function(e) {
+    if (e.button == 0) { // left click
+        selecting = false;
+    }
+    else if(e.button == 2){ // right click
+    }
+}
+function select(mouse,ships) {
+    var xl, xr, yt, yb; // left,right,top,bottom
+    if(mouse.xi < mouse.xf) {
+        xl = mouse.xi;
+        xr = mouse.xf;
+    }
+    else {
+        xl = mouse.xf;
+        xr = mouse.xi;
+    }
+    if(mouse.yi < mouse.yf) {
+        yt = mouse.yi;
+        yb = mouse.yf;
+    }
+    else {
+        yt = mouse.yf;
+        yb = mouse.yi;
+    }
+    bounds(xl, xr, yt, yb, ships, function(ship, bounds) {
+        ship.selected = false;
+        if(bounds) {
+            ship.selected = true;
+        }
+    });
+}
+function isValidMove(id,x,y,ships) {
+    return bounds(x-SHIP_WIDTH/2, x+SHIP_WIDTH/2, y-SHIP_HEIGHT/2, y+SHIP_HEIGHT/2, ships,
+    function(ship, inBounds) {
+        if(ship.id == id || !inBounds) {
+            return true;
+        }
+        return false;
+    });
+}
+
+//returns whether or not it iterated through all elements
+//haltCallback should return true if the iteration should continue
+function bounds(xl, xr, yt, yb, ships, haltCallback) {
+    for(var i = 0; i < ships.length; i++) {
+        var xle = ships[i].x + SHIP_WIDTH/2 > xl;
+        var xre = ships[i].x - SHIP_WIDTH/2 < xr;
+        var yte = ships[i].y + SHIP_HEIGHT/2 > yt;
+        var ybe = ships[i].y - SHIP_HEIGHT/2 < yb;
+        var inBounds = xle && xre && yte && ybe;
+        if(haltCallback(ships[i], inBounds) == false) {
+            return false;
+        }
+    }
+    return true;
+}
+
+}
+</script>
+</head>
+<body>
+<canvas id="game" width="800px" height="500px" style="border: solid"></canvas>
+</body>
+</html>
+
