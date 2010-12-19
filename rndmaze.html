@@ -1,0 +1,121 @@
+<html>
+<head>
+<script>
+window.onload = function() {
+WIDTH = 800; HEIGHT = 500;
+FRAME_LENGTH = 20;
+FPS = 1000/20;
+
+var c = document.getElementById('game');
+var ctx = c.getContext("2d");
+//ctx.translate(0,c.height); ctx.scale(1,-1);
+setInterval(draw, FRAME_LENGTH);
+maze = [
+[1,0,1,1,0],
+[1,0,1,0,1],
+[1,0,0,0,0],
+];
+
+tile = {EMPTY:1, WALL:0};
+
+bWIDTH = 80;
+bHEIGHT = 50;
+maze = genmaze(bWIDTH, bHEIGHT);
+
+
+function draw() {
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    var BW = WIDTH/maze[0].length;
+    var BH = HEIGHT/maze.length;
+    for(var r = 0; r < maze.length; r++) {
+        for(var c = 0; c < maze[0].length; c++) {
+            if(maze[r][c] == tile.WALL) {
+                ctx.fillRect(c*BW, r*BH, BW - 1, BH - 1);
+            }
+        }
+    }
+}
+
+function genmaze(w,h) {
+    var maze = initmaze(w,h);
+    var q = [[0,0]]
+    while(q.length != 0) {
+        //var e = q.shift();
+        var idx = Math.floor(q.length * Math.random())
+        var e = q.splice(idx,1)[0];
+        genmazeh(maze, q, e[0], e[1]);
+    }
+    return maze;
+}
+function genmazeh(maze,q,r,c) {
+    console.log("genmazeh: " + r + ", " + c);
+    if(maze[r][c] == tile.EMPTY || maze[r][c] == tile.WALL) {
+        return;
+    }
+    var info = neighborInfo(maze,r,c);
+    var wnp = info.wall / info.total;
+    if(wnp >= (info.total - 1) / info.total) {
+        wnp = 1;
+    }
+    else {
+        wnp /= 4;
+    }
+    var rand = Math.random();
+    console.log("wnp: " + wnp + ", rand: " + rand);
+    if(rand < wnp) {
+        maze[r][c] = tile.EMPTY;
+        neighbors(maze,r,c,function(ir,ic) {
+            q.push([ir,ic]);
+        });
+    }
+    else {
+        maze[r][c] = tile.WALL;
+    }
+}
+
+function neighborInfo(maze,r,c) {
+    var wallNeighbors = 0;
+    var n = 0;
+    neighbors(maze,r,c,function(ir,ic) {
+            n++;
+            if(maze[ir][ic] != tile.EMPTY) {
+                wallNeighbors++;
+            }
+    });
+    return {wall: wallNeighbors, total: n};
+}
+
+function neighbors(maze,r,c,callback) {
+    for(var ir = r - 1; ir <= r + 1; ir++) {
+        if(ir < 0 || ir >= maze.length) {
+            continue;
+        }
+        for(var ic = c - 1; ic <= c + 1; ic++) {
+            if(ic < 0 || ic >= maze[0].length) {
+                continue;
+            }
+            callback(ir,ic);
+        }
+    }
+}
+
+function initmaze(w,h) {
+    var maze = [];
+    var undefined;
+    for(var r = 0; r < h; r++) {
+        maze[r] = [];
+        for(var c = 0; c < w; c++) {
+            maze[r][c] = undefined;
+        }
+    }
+    return maze;
+}
+
+}
+</script>
+</head>
+<body>
+<canvas id="game" width="800px" height="500px" style="border: solid"></canvas>
+</body>
+</html>
+
